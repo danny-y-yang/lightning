@@ -1,0 +1,30 @@
+.navlink {
+    text-decoration: none;
+    font-size: 22px;
+    padding-right: 1.5rem
+}
+
+.styled-navbar {
+    border-bottom-style: solid;
+    border-color: black;
+    border-bottom-width: thin;
+}
+
+@font-face {
+    font-family: 'Source Serif Pro';
+    src: url("./SourceSerifPro-Light.ttf");
+}
+
+body {
+    font-family: 'Source Serif Pro', sans-serif !important;
+}
+
+.content-container {
+    padding-top: 1rem;
+}
+
+/*.stats-for-nerds {*/
+/*    border-bottom-style: solid;*/
+/*    border-color: black;*/
+/*    border-bottom-width: thin;*/
+/*}*/
