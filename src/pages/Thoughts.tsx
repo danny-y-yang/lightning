@@ -3,21 +3,21 @@ import { FormEvent, useEffect, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import { Form, FormControl, FormGroup } from "react-bootstrap";
-import Thought from "../components/Thought";
+import Thought from "../models/Models";
+import ThoughtPost from "../components/Thought";
 import axios from "axios";
 
 interface State {
   showModal: boolean;
   textBoxState: string;
-  allThoughts: string[];
+  allThoughts: Thought[];
 }
 
 function initState(): State {
-  const thoughts: string[] = [];
   return {
     showModal: false,
     textBoxState: "",
-    allThoughts: thoughts,
+    allThoughts: [],
   };
 }
 
@@ -34,8 +34,14 @@ export default function Thoughts() {
   useEffect(() => {
     console.log("onMount");
     axios.get("http://localhost:5000/thought/getAll").then((r) => {
+      // By default sort by recency
+      const retrievedThoughts: Thought[] = r.data.allThoughts;
+      retrievedThoughts.sort(
+        (t1, t2) => t2.createTimeEpochMs - t1.createTimeEpochMs
+      );
+
       setState((prevState) => {
-        return { ...prevState, allThoughts: r.data.allThoughts };
+        return { ...prevState, allThoughts: retrievedThoughts };
       });
     });
   }, []);
@@ -50,12 +56,14 @@ export default function Thoughts() {
         New Thought ✍️
       </Button>
       {state.allThoughts.map((thought, index) => (
-        <Thought
+        <ThoughtPost
+          id={thought.tid}
           key={`thought-${index}`}
           title={"Journal Entry"}
-          text={thought}
+          text={thought.text}
           author="Danny"
-          date={new Date().toLocaleDateString()}
+          date={thought.createDate}
+          onDelete={handleDeleteThought}
         />
       ))}
       <Modal
@@ -107,25 +115,38 @@ export default function Thoughts() {
       return { ...prevState, showModal: on };
     });
   }
+
   function handleFormSubmit(e: FormEvent) {
     e.preventDefault();
-    setState((prevState) => {
-      return {
-        ...prevState,
-        allThoughts: [state.textBoxState, ...state.allThoughts],
-        showModal: false,
-        textBoxState: "",
-      };
-    });
 
+    // TODO: this needs to return ID!
     axios
       .post(
         "http://localhost:5000/thought/create",
         { thoughtData: state.textBoxState },
         { headers: { "Content-Type": "application/json" } }
       )
-      .then((r) => {
-        console.log(r.data);
+      .then((response) => {
+        setState((prevState) => {
+          const now = new Date();
+          const dateTimeString = `${now.getFullYear()}-${
+            now.getMonth() + 1
+          }-${now.getDate()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+          const newThought = {
+            text: state.textBoxState,
+            createDate: dateTimeString,
+            tid: response.data.tid,
+            createTimeEpochMs: now.getTime(),
+          };
+
+          return {
+            ...prevState,
+            allThoughts: [newThought, ...state.allThoughts],
+            showModal: false,
+            textBoxState: "",
+          };
+        });
       });
   }
 
@@ -136,5 +157,20 @@ export default function Thoughts() {
         textBoxState: e.target.value,
       };
     });
+  }
+
+  function handleDeleteThought(id: string): void {
+    axios
+      .delete(`http://localhost:5000/thought/delete/${id}`)
+      .then((response) => {
+        const success: boolean = response.data.success;
+        if (success) {
+          const updatedThoughts = state.allThoughts.filter((t) => t.tid != id);
+          console.log(`Updated thoughts: ${updatedThoughts}`);
+          setState((prevState) => {
+            return { ...prevState, allThoughts: [...updatedThoughts] };
+          });
+        }
+      });
   }
 }
